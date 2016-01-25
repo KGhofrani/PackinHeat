@@ -21,7 +21,7 @@ M=10*np.identity(n)
 M2=10*scipy.sparse.rand(1000, n, 0.5)
 M2=M2.todense()
 M2=np.asarray(M2)
-settemp=650
+settemp=500
 G=10;
 target0=np.ones([1,n]) * settemp;
 target=target0;
@@ -44,8 +44,19 @@ net= buildNetwork(3*n,n*5,n);
 ds = SupervisedDataSet(3*n,n);
 trainer = BackpropTrainer(net, ds);
 
+#add a PID control here and allow to control heaters.
+#this can allow for rough tuning of the temperature
+#finer tuning would be done by the neural network
+#on the other side, the person working with the system can turn on and off
+#NN training so the system does not get confused when additional heat source
+#is added. Allow for a very, very large training sessions that will continously
+#improve the accuracy of the system. 
+
+
+
+
 tottrain=4320; #total number of data points to collect
-eyetrain=40; #number of eidentity training
+eyetrain=40; #number of eidentity training 
 rantrain=80; #numbr of random trainings
 
 while (1==1):
@@ -55,60 +66,60 @@ while (1==1):
         if (s>2):
 
             lasttemp=temp;
-
+            
             newdata = mydata.split(",")
-
+            
             newdata=newdata[0:(n)]
             newdata=map(float,newdata)
             newdata=np.asarray(newdata)
-            newdata[0]=settemp#remove thissette line when the missing sensor is connected
-            print(newdata)
+            #newdata[0]=settemp#remove thissette line when the missing sensor is connected
+            print(newdata) 
             #if (s==1):
-                #ds.clear();         #Clearing the initializations
-
+                #ds.clear();         #Clearing the initializations 
+            
             for i in range(0,((len(newdata)+1)/n)):         #Making sure data points are not bunched together
-
+                
                 stor=newdata[ (n*i):((n*i)+(n-1)) ]
               #  R=10000*(11264*G+25*stor)/(14336*G-25*stor);
               #  temp= 0.00320822*np.power(R,4) - 0.52473409*np.power(R,3)  + 38.22403854*np.power(R,2) - 1566.33874662*R + 32214.23699140;
-          #      temp=newdata;
+          #      temp=newdata;            
                 dtempold=dtemp;
                 dtemp=lasttemp-temp;
-
-                x=np.concatenate([dtempold, temp, dtemp],axis=1);
+                
+                x=np.concatenate([dtempold, temp, dtemp],axis=1);    
                 count=count+1;
             if (s<50) and (s>1):
                 ds.addSample(x,Output)
-                thread.start_new_thread(trainer.trainEpochs, (5,))
+                thread.start_new_thread(trainer.trainEpochs, (5,))                    
                 #Quick traning for first 50 data points
-
+            
             if (count>=traininginterval) and (s<tottrain):         #Collecting Data
                 ds.addSample(x,Output)
-                thread.start_new_thread(trainer.trainEpochs, (10,))
+                thread.start_new_thread(trainer.trainEpochs, (10,))   
                 count=0;
-
+    
             elif (s==tottrain):
                 ds.addSample(x,Output)
                 thread.start_new_thread(trainer.trainEpochs, (1000,))          #Extra long training after data collection is done
-                if (threading.activeCount()==0):
-
-
-
-
-
-
+                if (threading.activeCount()==0):        
+                    NetworkWriter.writeToFile(net, 'network.xml')
+    
+    
+                
+            
+            
             older=er;
             er=target-temp;         #calculating error
             der=older-er;
             if (np.absolute(np.mean(er)>2)):
                 er=er/(np.mean(er)/2)
-            vec=np.concatenate([dtemp, temp, er],axis=1);
+            vec=np.concatenate([dtemp, temp, er],axis=1); 
             vec=vec[0];
             Output=100*net.activate(vec);            #Calculaing the output using NN
+            
 
 
-
-
+                    
             if (np.min(np.absolute(er))<tolerance) and (s<tottrain):           #Chainging target temprature when training to collect more data
                 if alpha==-1:
                     target=target0;
@@ -124,7 +135,7 @@ while (1==1):
             if (s>eyetrain):
                 Output=np.floor(Output)
                 Output=map(int, Output)
-
+            
             if (s<eyetrain):
                 d=np.mod(s,n)
                 Output=100*M[d,:]
@@ -132,7 +143,7 @@ while (1==1):
                 d=np.mod(s,n)
                 Output=100*M2[d,:]
                 Output=map(int,Output)
-
+                
             for k in range(0,len(Output)):
                 if (Output[k]<0):
                     Output[k]=0
@@ -144,8 +155,8 @@ while (1==1):
             Output=map(float, Output)
             data.write(output)
             Output=np.array(Output)/100
-
-
-
-
-
+        
+            
+        
+            
+        
